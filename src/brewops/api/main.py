@@ -54,6 +54,15 @@ def parse_timestamp(value: str) -> str:
     return ts.strftime("%Y-%m-%d %H:%M:%S")
 
 
+def parse_date(value: str) -> str:
+    """Validate a YYYY-MM-DD query param; return it unchanged if valid."""
+    try:
+        datetime.strptime(value.strip(), "%Y-%m-%d")
+    except ValueError:
+        raise HTTPException(400, f"unparsable date {value!r}, expected YYYY-MM-DD")
+    return value.strip()
+
+
 class BrewIn(BaseModel):
     machine_id: int
     drink_type: str
@@ -71,8 +80,16 @@ class MaintenanceIn(BaseModel):
 
 
 @app.get("/api/stats")
-def stats(conn: sqlite3.Connection = Depends(get_db)):
-    return queries.get_stats(conn)
+def stats(
+    start: str | None = None,
+    end: str | None = None,
+    conn: sqlite3.Connection = Depends(get_db),
+):
+    start_date = parse_date(start) if start is not None else None
+    end_date = parse_date(end) if end is not None else None
+    if start_date is not None and end_date is not None and start_date > end_date:
+        raise HTTPException(400, "start date must not be after end date")
+    return queries.get_stats(conn, start=start, end=end)
 
 
 @app.get("/api/machines")

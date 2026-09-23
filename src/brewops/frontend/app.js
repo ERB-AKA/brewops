@@ -78,7 +78,13 @@ function renderMachineCards(healths) {
 }
 
 async function loadDashboard() {
-  const stats = await fetchJSON("/api/stats");
+  const start = document.getElementById("filter-start").value;
+  const end = document.getElementById("filter-end").value;
+  const params = new URLSearchParams();
+  if (start) params.set("start", start);
+  if (end) params.set("end", end);
+  const query = params.toString();
+  const stats = await fetchJSON(`/api/stats${query ? "?" + query : ""}`);
   document.getElementById("total-brews").textContent = stats.total_brews;
   const lastDay = stats.per_day[stats.per_day.length - 1];
   document.getElementById("brews-today").textContent = lastDay ? lastDay.count : 0;
@@ -107,6 +113,32 @@ function fillSelect(select, items, valueKey, labelKey) {
     option.textContent = item[labelKey];
     select.appendChild(option);
   }
+}
+
+function setupFilter() {
+  document.getElementById("filter-apply").addEventListener("click", () => {
+    const start = document.getElementById("filter-start").value;
+    const end = document.getElementById("filter-end").value;
+    const message = document.getElementById("filter-message");
+    message.textContent = "";
+    message.className = "message";
+    if (start && end && start > end) {
+      message.textContent = "From date must not be after To date.";
+      message.classList.add("error");
+      return;
+    }
+    loadDashboard().catch((error) => {
+      message.textContent = error.message;
+      message.classList.add("error");
+    });
+  });
+
+  document.getElementById("filter-clear").addEventListener("click", () => {
+    document.getElementById("filter-start").value = "";
+    document.getElementById("filter-end").value = "";
+    document.getElementById("filter-message").textContent = "";
+    loadDashboard().catch((error) => console.error("Dashboard failed to load:", error));
+  });
 }
 
 async function setupForms() {
@@ -160,4 +192,5 @@ loadDashboard().catch((error) => {
   document.getElementById("total-brews").textContent = "!";
   console.error("Dashboard failed to load:", error);
 });
+setupFilter();
 setupForms().catch((error) => console.error("Form setup failed:", error));
