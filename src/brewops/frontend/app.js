@@ -63,10 +63,14 @@ function renderMachineCards(healths) {
           .map((e) => `${e.error_code || "?"} (${e.timestamp.slice(0, 10)})`)
           .join(", ")}</p>`
       : "";
+    const specialty = m.specialty
+      ? `<p>Specialty: ${m.specialty.label} (${m.specialty.count} brews)</p>`
+      : `<p>Specialty: none yet</p>`;
     card.innerHTML = `
       <h3>${m.name}</h3>
       <p class="badge">${m.has_telemetry ? "telemetry" : "manual log"}</p>
       <p>${m.brew_count} brews · last ${m.last_brew ? m.last_brew.slice(0, 16) : "never"}</p>
+      ${specialty}
       <p>Last maintenance: ${maintenance}</p>
       ${errors}`;
     container.appendChild(card);

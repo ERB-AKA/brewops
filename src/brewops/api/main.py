@@ -15,7 +15,7 @@ from brewops.db.connection import connect
 from brewops.db.schema import init_db
 
 HOST = "127.0.0.1"
-PORT = 8123
+PORT = 8124
 
 TIMESTAMP_FORMATS = ("%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%dT%H:%M")
 
