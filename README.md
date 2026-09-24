@@ -54,6 +54,6 @@ src/brewops/db/         SQLite schema, connection, queries
 src/brewops/api/        FastAPI routes + static file serving
 src/brewops/frontend/   index.html, app.js, style.css — no build step
 tests/                  pytest suite
-tickets/                open tickets, in markdown
+tickets/                open tickets, in markdown — one file per stakeholder request
 data/inbox/             sample CSV event logs (~3 months)
 ```

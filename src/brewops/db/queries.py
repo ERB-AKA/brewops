@@ -65,30 +65,56 @@ def insert_maintenance(
     return cur.lastrowid
 
 
-def get_stats(conn: sqlite3.Connection) -> dict[str, Any]:
+def get_stats(
+    conn: sqlite3.Connection,
+    start: str | None = None,
+    end: str | None = None,
+) -> dict[str, Any]:
     """Dashboard numbers: totals, per-drink, per-day."""
-    total = conn.execute("SELECT COUNT(*) AS n FROM brew_events").fetchone()["n"]
+    where = []
+    params: list[str] = []
+    if start is not None:
+        where.append("DATE(timestamp) >= ?")
+        params.append(start)
+    if end is not None:
+        where.append("DATE(timestamp) <= ?")
+        params.append(end)
+    where_clause = f"WHERE {' AND '.join(where)}" if where else ""
+
+    total = conn.execute(f"SELECT COUNT(*) AS n FROM brew_events {where_clause}", params).fetchone()["n"]
+
+    on_clause_parts = ["be.drink_type = dt.name"]
+    on_params = list(params)
+    if start is not None:
+        on_clause_parts.append("DATE(be.timestamp) >= ?")
+    if end is not None:
+        on_clause_parts.append("DATE(be.timestamp) <= ?")
+    on_clause = " AND ".join(on_clause_parts)
+
     per_drink = [
         dict(r)
         for r in conn.execute(
-            """
+            f"""
             SELECT dt.name, dt.label, COUNT(be.id) AS count
             FROM drink_types dt
-            LEFT JOIN brew_events be ON be.drink_type = dt.name
+            LEFT JOIN brew_events be ON {on_clause}
             GROUP BY dt.id
             ORDER BY dt.id
-            """
+            """,
+            on_params,
         )
     ]
     per_day = [
         dict(r)
         for r in conn.execute(
-            """
+            f"""
             SELECT DATE(timestamp) AS day, COUNT(*) AS count
             FROM brew_events
+            {where_clause}
             GROUP BY DATE(timestamp)
             ORDER BY day
-            """
+            """,
+            params,
         )
     ]
     return {"total_brews": total, "per_drink": per_drink, "per_day": per_day}
@@ -127,9 +153,22 @@ def get_machine_health(conn: sqlite3.Connection, machine_id: int) -> dict[str, A
             (machine_id,),
         )
     ]
+    specialty = conn.execute(
+        """
+        SELECT dt.name, dt.label, COUNT(be.id) AS count
+        FROM brew_events be
+        JOIN drink_types dt ON dt.name = be.drink_type
+        WHERE be.machine_id = ?
+        GROUP BY dt.id
+        ORDER BY count DESC, dt.name ASC
+        LIMIT 1
+        """,
+        (machine_id,),
+    ).fetchone()
     return machine | {
         "brew_count": brews["count"],
         "last_brew": brews["last_brew"],
         "last_maintenance": dict(last_maintenance) if last_maintenance else None,
         "recent_errors": recent_errors,
+        "specialty": dict(specialty) if specialty else None,
     }
